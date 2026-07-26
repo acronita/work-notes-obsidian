@@ -1,0 +1,9 @@
+﻿{
+  "id": "work-notes",
+  "name": "Work Notes",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Daily work log with Yesterday, Today, Daily Notes and a shared Global Notes section",
+  "author": "is-cout",
+  "isDesktopOnly": false
+}
