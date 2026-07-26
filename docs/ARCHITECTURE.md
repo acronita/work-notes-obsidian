@@ -9,14 +9,15 @@ folder, optionally split into `year/month` subfolders. Each note carries four se
 Today, Daily Notes, and a shared Global Notes — and when a new note is created its Yesterday section is
 seeded from the previous note's Today, with a collapsed foldout embedding the previous note. The plugin
 owns no custom file format (plain Markdown notes only), makes no network calls, and works on desktop and
-mobile. Global Notes are shared across all work notes; the current scaffold does not yet decide the exact
-storage mechanism for that shared section — that's an implementation decision for the feature task.
+mobile. Global Notes are shared across all work notes by transcluding a single note
+(`Work Notes - Global.md`, at the root of the configured folder) via an `![[...]]` embed — editing it
+once updates every work note's Global Notes section.
 
 ## Source layout
 
 | File | Responsibility |
 |---|---|
-| `src/main.ts` | Plugin entry point: `onload`/`onunload`, settings load/save, settings tab. |
+| `src/main.ts` | Everything: `onload`/`onunload`, ribbon + command, work-note creation (folder resolution, previous-note lookup, Yesterday seeding, foldout + Global embed), settings tab, and pure date/section helpers. |
 
 <!-- Add a row per new src/*.ts file as the project grows past a single file â€” this
      table is the map a new contributor (or future Claude session) reads first. -->
