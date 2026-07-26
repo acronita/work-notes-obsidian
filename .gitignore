@@ -3,6 +3,7 @@ node_modules/
 
 # Build output — built via CI / attached to GitHub Releases, not committed
 main.js
+styles.css
 *.js.map
 
 # Obsidian plugin runtime data (per-vault settings, never commit)

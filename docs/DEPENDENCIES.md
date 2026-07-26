@@ -1,4 +1,4 @@
-﻿# Dependency policy
+# Dependency policy
 
 ## Rule
 
