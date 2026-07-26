@@ -5,13 +5,18 @@ Technical overview of how the Work Notes plugin is built. Read this before makin
 ## Overview
 
 Work Notes generates one Markdown note per working day (`Work note DD-MM-YYYY`) in a user-configured
-folder, optionally split into `year/month` subfolders. Each note carries four sections — Yesterday,
-Today, Daily Notes, and a shared Global Notes — and when a new note is created its Yesterday section is
-seeded from the previous note's Today, with a collapsed foldout embedding the previous note. The plugin
-owns no custom file format (plain Markdown notes only), makes no network calls, and works on desktop and
-mobile. Global Notes are shared across all work notes by transcluding a single note
-(`Work Notes - Global.md`, at the root of the configured folder) via an `![[...]]` embed — editing it
-once updates every work note's Global Notes section.
+folder, optionally split into `year/month` subfolders. Each note has bold-labelled `**Yesterday:**` and
+`**Today:**` lines, a Daily Notes area between two `---` rules, and a Global Notes box; when a new note is
+created its Yesterday is seeded from the previous note's Today, and labelled with that note's weekday when
+it isn't the day before. The plugin owns no custom file format (plain Markdown only), makes no network
+calls, and works on desktop and mobile.
+
+Two parts of the note render through **Dataview** (`dataviewjs` blocks the plugin writes into the note, so
+Dataview with JS queries must be enabled): the collapsible previous-note foldout, which `dv.io.load`s the
+previous note and strips its own `dataviewjs` blocks so only Yesterday/Today/Daily show; and the Global
+Notes box, which loads the shared `Work Notes - Global.md` (root of the configured folder) and adds an
+Edit button that opens it. Because the shared note is loaded live, editing it once updates the box in every
+work note.
 
 ## Source layout
 

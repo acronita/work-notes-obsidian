@@ -25,11 +25,11 @@ export default class WorkNotesPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.addRibbonIcon("notebook-pen", "Create work note", () => this.createOrOpenTodayNote());
+		this.addRibbonIcon("notebook-pen", "Create work note", () => this.createOrOpenNote(new Date()));
 		this.addCommand({
 			id: "create-work-note",
 			name: "Create or open today's work note",
-			callback: () => this.createOrOpenTodayNote(),
+			callback: () => this.createOrOpenNote(new Date()),
 		});
 
 		this.addSettingTab(new WorkNotesPluginSettingTab(this.app, this));
@@ -47,10 +47,9 @@ export default class WorkNotesPlugin extends Plugin {
 
 	// --- work-note creation -------------------------------------------------
 
-	async createOrOpenTodayNote() {
-		const today = new Date();
-		const folder = this.folderForDate(today);
-		const path = normalizePath(`${folder}/${fileNameForDate(today)}.md`);
+	async createOrOpenNote(date: Date) {
+		const folder = this.folderForDate(date);
+		const path = normalizePath(`${folder}/${fileNameForDate(date)}.md`);
 
 		const existing = this.app.vault.getAbstractFileByPath(path);
 		if (existing instanceof TFile) {
@@ -61,36 +60,38 @@ export default class WorkNotesPlugin extends Plugin {
 		await this.ensureFolder(folder);
 		await this.ensureGlobalNote();
 
-		const prev = this.findPreviousNote(today);
-		const content = await this.buildNoteContent(today, prev);
+		const prev = this.findPreviousNote(date);
+		const content = await this.buildNoteContent(date, prev);
 
 		const file = await this.app.vault.create(path, content);
 		await this.openFile(file);
 	}
 
-	// Assemble the four-section note, seeding Yesterday from the previous note's Today.
+	// Assemble the note: previous-note foldout (dataviewjs), Yesterday/Today with
+	// bold labels, a Daily Notes area between two rules, and a Global Notes box
+	// (dataviewjs). Yesterday is seeded from the previous note's Today.
 	async buildNoteContent(today: Date, prev: TFile | null): Promise<string> {
 		let foldout = "";
 		let yesterdayLabel = "Yesterday";
 		let yesterdayBody = "";
 
 		if (prev) {
-			foldout = `> [!note]- Previous: ${prev.basename}\n> ![[${prev.basename}]]\n\n`;
+			foldout = foldoutBlock(prev.basename, prev.path) + "\n\n";
 			const prevDate = parseDateFromName(prev.basename);
 			if (prevDate && !isDayBefore(prevDate, today)) {
 				yesterdayLabel = WEEKDAYS[prevDate.getDay()];
 			}
 			const prevContent = await this.app.vault.read(prev);
-			yesterdayBody = extractSection(prevContent, "Today");
+			yesterdayBody = extractToday(prevContent);
 		}
 
-		const globalPath = this.globalNotePath();
 		return (
-			foldout +
-			`## ${yesterdayLabel}\n${yesterdayBody ? yesterdayBody + "\n" : ""}\n` +
-			`## Today\n\n` +
-			`## Daily Notes\n\n` +
-			`## Global Notes\n![[${globalPath}]]\n`
+			`\n` + foldout +
+			`**${yesterdayLabel}:** ${yesterdayBody}\n` +
+			`**Today:** \n\n` +
+			`---\n\n\n\n` +
+			`---\n\n` +
+			globalBlock(this.globalNotePath())
 		);
 	}
 
@@ -140,12 +141,13 @@ export default class WorkNotesPlugin extends Plugin {
 		}
 	}
 
-	// Create the shared Global Notes file once, so its embed isn't a broken link.
+	// Create the shared Global Notes file once, so its dataviewjs load isn't empty.
+	// No heading: the box renders its own "Global Notes" title.
 	async ensureGlobalNote() {
 		await this.ensureFolder(normalizePath(this.settings.folder));
 		const path = this.globalNotePath();
 		if (!this.app.vault.getAbstractFileByPath(path)) {
-			await this.app.vault.create(path, "# Global Notes\n\n");
+			await this.app.vault.create(path, "");
 		}
 	}
 
@@ -192,17 +194,47 @@ function isInsideFolder(filePath: string, folder: string): boolean {
 	return filePath === folder || filePath.startsWith(folder + "/");
 }
 
-// Return the body under a `## <heading>` up to the next `## ` heading, trimmed.
-function extractSection(content: string, heading: string): string {
-	const lines = content.split("\n");
-	const start = lines.findIndex((l) => l.trim() === `## ${heading}`);
-	if (start === -1) return "";
-	const body: string[] = [];
-	for (let i = start + 1; i < lines.length; i++) {
-		if (/^##\s/.test(lines[i])) break;
-		body.push(lines[i]);
-	}
-	return body.join("\n").trim();
+// Text after `**Today:**` up to the first `---` rule, trimmed. Strips dataviewjs
+// blocks first so their code never leaks into the carried-over text.
+function extractToday(content: string): string {
+	const stripped = content.replace(/```dataviewjs[\s\S]*?```/g, "");
+	const marker = "**Today:**";
+	const idx = stripped.indexOf(marker);
+	if (idx === -1) return "";
+	let rest = stripped.slice(idx + marker.length);
+	const sep = rest.search(/\n---\s*(\n|$)/);
+	if (sep !== -1) rest = rest.slice(0, sep);
+	return rest.trim();
+}
+
+// dataviewjs block: collapsible box embedding the previous note, with its own
+// dataviewjs blocks (foldout + global box) stripped so the preview shows only
+// that note's Yesterday/Today/Daily content. Requires Dataview's JS queries.
+function foldoutBlock(prevBasename: string, prevPath: string): string {
+	return [
+		"```dataviewjs",
+		'const details = dv.container.createEl("details", { cls: "work-notes-prev" });',
+		`details.createEl("summary", { text: ${JSON.stringify("Previous: " + prevBasename)} });`,
+		`const raw = await dv.io.load(${JSON.stringify(prevPath)});`,
+		'const md = (raw ?? "*(previous note not found)*").replace(/```dataviewjs[\\s\\S]*?```/g, "").trim();',
+		'dv.el("div", md, { container: details });',
+		"```",
+	].join("\n");
+}
+
+// dataviewjs block: renders the shared Global Notes file inside a titled box.
+function globalBlock(globalPath: string): string {
+	return [
+		"```dataviewjs",
+		'const box = dv.container.createEl("div", { cls: "work-notes-global-box" });',
+		'const head = box.createEl("div", { cls: "work-notes-global-head" });',
+		'head.createEl("div", { cls: "work-notes-global-title", text: "Global Notes" });',
+		'const edit = head.createEl("button", { cls: "work-notes-global-edit", text: "Edit" });',
+		`edit.onclick = () => app.workspace.openLinkText(${JSON.stringify(globalPath)}, "", false);`,
+		`const raw = await dv.io.load(${JSON.stringify(globalPath)});`,
+		'dv.el("div", raw ?? "", { container: box });',
+		"```",
+	].join("\n") + "\n";
 }
 
 class WorkNotesPluginSettingTab extends PluginSettingTab {

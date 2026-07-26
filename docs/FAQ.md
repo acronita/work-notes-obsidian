@@ -14,9 +14,15 @@ notes in `<folder>/YYYY/MM/`.
 
 ### How is Global Notes shared across every work note?
 
-It's a single note, `Work Notes - Global.md`, at the root of the configured folder, transcluded into each
-note via `![[...]]` (`GLOBAL_NOTE_BASENAME`, [src/main.ts](../src/main.ts)). Edit it once and it changes
-everywhere.
+It's a single note, `Work Notes - Global.md`, at the root of the configured folder (`GLOBAL_NOTE_BASENAME`,
+[src/main.ts](../src/main.ts)), loaded live into the Global Notes box of every work note via `dataviewjs`.
+Edit it once — use the box's **Edit** button — and it changes everywhere.
+
+### The foldout / Global Notes box is blank — why?
+
+Both render via `dataviewjs`, so they need the **Dataview** plugin installed with **Settings → Dataview →
+Enable JavaScript Queries** on. See the block builders `foldoutBlock` / `globalBlock` in
+[src/main.ts](../src/main.ts).
 
 ### Why does the top section say a weekday name instead of "Yesterday"?
 
