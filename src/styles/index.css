@@ -1,3 +1,40 @@
 /* Plugin styles. Bundled by esbuild into the root styles.css — don't hand-edit
    the root file, edit this one (or split it into partials imported here once
    it grows past a page or two). */
+
+/* Collapsible preview of the previous work note. */
+.work-notes-prev {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 0.4em 0.8em;
+	margin-bottom: 1em;
+	background: var(--background-secondary);
+}
+.work-notes-prev > summary {
+	cursor: pointer;
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+/* Shared Global Notes box. */
+.work-notes-global-box {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 0.6em 0.9em;
+	background: var(--background-secondary);
+}
+.work-notes-global-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 0.4em;
+}
+.work-notes-global-title {
+	font-weight: 700;
+	color: var(--text-muted);
+}
+.work-notes-global-edit {
+	cursor: pointer;
+	font-size: 0.8em;
+	padding: 0.15em 0.6em;
+}

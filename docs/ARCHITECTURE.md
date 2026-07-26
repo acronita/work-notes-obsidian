@@ -1,22 +1,28 @@
-﻿# Architecture
+# Architecture
 
 Technical overview of how the Work Notes plugin is built. Read this before making non-trivial changes.
 
 ## Overview
 
 Work Notes generates one Markdown note per working day (`Work note DD-MM-YYYY`) in a user-configured
-folder, optionally split into `year/month` subfolders. Each note carries four sections — Yesterday,
-Today, Daily Notes, and a shared Global Notes — and when a new note is created its Yesterday section is
-seeded from the previous note's Today, with a collapsed foldout embedding the previous note. The plugin
-owns no custom file format (plain Markdown notes only), makes no network calls, and works on desktop and
-mobile. Global Notes are shared across all work notes; the current scaffold does not yet decide the exact
-storage mechanism for that shared section — that's an implementation decision for the feature task.
+folder, optionally split into `year/month` subfolders. Each note has bold-labelled `**Yesterday:**` and
+`**Today:**` lines, a Daily Notes area between two `---` rules, and a Global Notes box; when a new note is
+created its Yesterday is seeded from the previous note's Today, and labelled with that note's weekday when
+it isn't the day before. The plugin owns no custom file format (plain Markdown only), makes no network
+calls, and works on desktop and mobile.
+
+Two parts of the note render through **Dataview** (`dataviewjs` blocks the plugin writes into the note, so
+Dataview with JS queries must be enabled): the collapsible previous-note foldout, which `dv.io.load`s the
+previous note and strips its own `dataviewjs` blocks so only Yesterday/Today/Daily show; and the Global
+Notes box, which loads the shared `Work Notes - Global.md` (root of the configured folder) and adds an
+Edit button that opens it. Because the shared note is loaded live, editing it once updates the box in every
+work note.
 
 ## Source layout
 
 | File | Responsibility |
 |---|---|
-| `src/main.ts` | Plugin entry point: `onload`/`onunload`, settings load/save, settings tab. |
+| `src/main.ts` | Everything: `onload`/`onunload`, ribbon + command, work-note creation (folder resolution, previous-note lookup, Yesterday seeding, foldout + Global embed), settings tab, and pure date/section helpers. |
 
 <!-- Add a row per new src/*.ts file as the project grows past a single file â€” this
      table is the map a new contributor (or future Claude session) reads first. -->
