@@ -1,4 +1,4 @@
-﻿// Fallback bundler: transpiles src/*.ts to a single main.js using Node's
+// Fallback bundler: transpiles src/*.ts to a single main.js using Node's
 // built-in TypeScript type-stripping (no npm dependencies required).
 // Usage: node build-local.mjs   (or use `npm run build` if you have deps installed)
 import { stripTypeScriptTypes } from "node:module";

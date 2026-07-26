@@ -1,4 +1,4 @@
-﻿# Work Notes
+# Work Notes
 
 Daily work log with Yesterday, Today, Daily Notes and a shared Global Notes section
 

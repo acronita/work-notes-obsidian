@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Living log of significant changes to the project. This is **not** optional bookkeeping â€” every significant change (new feature, format change, dependency change, removed feature, policy change) gets an entry here at the time it's made. See the documentation policy in [.claude/CLAUDE.md](../.claude/CLAUDE.md).
 

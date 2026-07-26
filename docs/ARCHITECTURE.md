@@ -1,4 +1,4 @@
-﻿# Architecture
+# Architecture
 
 Technical overview of how the Work Notes plugin is built. Read this before making non-trivial changes.
 

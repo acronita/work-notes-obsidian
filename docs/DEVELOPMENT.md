@@ -1,4 +1,4 @@
-﻿# Development setup
+# Development setup
 
 ## Prerequisites
 

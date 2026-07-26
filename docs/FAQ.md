@@ -1,4 +1,4 @@
-﻿# FAQ â€” customizing the project
+# FAQ â€” customizing the project
 
 Practical "where do I go to change X" answers. For the how-things-fit-together view, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
