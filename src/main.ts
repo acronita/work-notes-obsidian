@@ -35,7 +35,7 @@ export default class WorkNotesPlugin extends Plugin {
 		this.addSettingTab(new WorkNotesPluginSettingTab(this.app, this));
 	}
 
-	onunload() {}
+	onunload() { }
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -87,7 +87,7 @@ export default class WorkNotesPlugin extends Plugin {
 
 		return (
 			`\n` + foldout +
-			`**${yesterdayLabel}:** ${yesterdayBody}\n` +
+			`**${yesterdayLabel}:** ${yesterdayBody}\n\n` +
 			`**Today:** \n\n` +
 			`---\n\n\n\n` +
 			`---\n\n` +
