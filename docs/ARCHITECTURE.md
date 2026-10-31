@@ -18,6 +18,14 @@ Notes box, which loads the shared `Work Notes - Global.md` (root of the configur
 Edit button that opens it. Because the shared note is loaded live, editing it once updates the box in every
 work note.
 
+The generated `dataviewjs` blocks must never contain three consecutive backticks — they would close the
+surrounding markdown fence early. `foldoutBlock` therefore builds the fence at runtime
+(`"`".repeat(3)`) and strips the previous note's `dataviewjs` blocks with a line-anchored `RegExp`.
+Notes written by 0.1.0 have the broken legacy foldout on disk; `migrateNote` (on `file-open` and for the
+active note at startup) detects it with `migrateLegacyFoldout` (exact match against `legacyFoldoutBlock`)
+and rewrites just that block via `vault.process`. It is idempotent, limited to the opened note inside the
+configured folder, and leaves any non-matching block untouched.
+
 ## Source layout
 
 | File | Responsibility |

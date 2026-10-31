@@ -24,6 +24,12 @@ Both render via `dataviewjs`, so they need the **Dataview** plugin installed wit
 Enable JavaScript Queries** on. See the block builders `foldoutBlock` / `globalBlock` in
 [src/main.ts](../src/main.ts).
 
+### Why do my old notes show code in the "Previous:" foldout?
+
+Notes created by 0.1.0 have a broken foldout block saved in the file. Just open the note — the plugin
+repairs that block automatically (only the foldout, nothing else; see `migrateNote` in
+[src/main.ts](../src/main.ts)). Notes you never open stay as they are.
+
 ### Why does the top section say a weekday name instead of "Yesterday"?
 
 When the previous work note isn't the calendar day before, the section is labelled with that note's
