@@ -33,6 +33,10 @@ export default class WorkNotesPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new WorkNotesPluginSettingTab(this.app, this));
+
+		// Repair the legacy (broken) previous-note foldout in the note being opened.
+		this.registerEvent(this.app.workspace.on("file-open", (file) => { void this.migrateNote(file); }));
+		this.app.workspace.onLayoutReady(() => { void this.migrateNote(this.app.workspace.getActiveFile()); });
 	}
 
 	onunload() { }
@@ -43,6 +47,32 @@ export default class WorkNotesPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	// --- legacy foldout migration -------------------------------------------
+
+	private migrating = new Set<string>();
+
+	// Rewrite ONLY the old broken foldout block of a work note being opened.
+	// No-op (file untouched, mtime unchanged) unless the exact legacy block is
+	// found. Idempotent, so the edit itself can't cause another migration.
+	async migrateNote(file: TFile | null) {
+		if (!file || file.extension !== "md") return;
+		if (this.settings.folder && !isInsideFolder(file.path, normalizePath(this.settings.folder))) return;
+		if (!parseDateFromName(file.basename)) return;
+		if (this.migrating.has(file.path)) return;
+
+		this.migrating.add(file.path);
+		try {
+			const content = await this.app.vault.cachedRead(file);
+			if (migrateLegacyFoldout(content) === null) return;
+			// process() re-reads the file atomically; keep data unchanged if it no longer matches.
+			await this.app.vault.process(file, (data) => migrateLegacyFoldout(data) ?? data);
+		} catch (e) {
+			console.warn("Work Notes: foldout migration skipped", file.path, e);
+		} finally {
+			this.migrating.delete(file.path);
+		}
 	}
 
 	// --- work-note creation -------------------------------------------------
@@ -197,7 +227,7 @@ function isInsideFolder(filePath: string, folder: string): boolean {
 // Text after `**Today:**` up to the first `---` rule, trimmed. Strips dataviewjs
 // blocks first so their code never leaks into the carried-over text.
 function extractToday(content: string): string {
-	const stripped = content.replace(/```dataviewjs[\s\S]*?```/g, "");
+	const stripped = content.replace(/^```dataviewjs[\s\S]*?^```/gm, "");
 	const marker = "**Today:**";
 	const idx = stripped.indexOf(marker);
 	if (idx === -1) return "";
@@ -216,10 +246,57 @@ function foldoutBlock(prevBasename: string, prevPath: string): string {
 		'const details = dv.container.createEl("details", { cls: "work-notes-prev" });',
 		`details.createEl("summary", { text: ${JSON.stringify("Previous: " + prevBasename)} });`,
 		`const raw = await dv.io.load(${JSON.stringify(prevPath)});`,
+		// Never write three consecutive backticks inside the generated block: they
+		// would break the surrounding markdown fence. Build the fence at runtime.
+		'const fence = "`".repeat(3);',
+		'const stripRe = new RegExp("^" + fence + "dataviewjs[^]*?^" + fence, "gm");',
+		'const md = (raw ?? "*(previous note not found)*").replace(stripRe, "").trim();',
+		'dv.el("div", md, { container: details });',
+		"```",
+	].join("\n");
+}
+
+// The foldout block as plugin versions <= 0.1.0 wrote it (its replace line holds
+// three literal backticks, which closes the markdown fence early). Kept only to
+// recognise and repair existing notes.
+function legacyFoldoutBlock(prevBasename: string, prevPath: string): string {
+	return [
+		"```dataviewjs",
+		'const details = dv.container.createEl("details", { cls: "work-notes-prev" });',
+		`details.createEl("summary", { text: ${JSON.stringify("Previous: " + prevBasename)} });`,
+		`const raw = await dv.io.load(${JSON.stringify(prevPath)});`,
 		'const md = (raw ?? "*(previous note not found)*").replace(/```dataviewjs[\\s\\S]*?```/g, "").trim();',
 		'dv.el("div", md, { container: details });',
 		"```",
 	].join("\n");
+}
+
+// Loose shape of the legacy block, only used to pull out the two JSON strings
+// (summary text, note path). The match is then verified byte-for-byte against
+// legacyFoldoutBlock(), so anything that deviates is left alone.
+const LEGACY_FOLDOUT_RE =
+	/^```dataviewjs\r?\n[^\r\n]*\r?\ndetails\.createEl\("summary", \{ text: ("(?:[^"\\\r\n]|\\.)*") \}\);\r?\nconst raw = await dv\.io\.load\(("(?:[^"\\\r\n]|\\.)*")\);\r?\n[^\r\n]*\r?\n[^\r\n]*\r?\n```(?=\r?\n|$)/m;
+
+// Returns `content` with the first legacy foldout block replaced by the current
+// foldoutBlock() (same prev note, same line endings, everything else untouched),
+// or null when there is nothing to migrate / the block isn't the exact legacy one.
+function migrateLegacyFoldout(content: string): string | null {
+	const m = LEGACY_FOLDOUT_RE.exec(content);
+	if (!m) return null;
+	let summary: unknown;
+	let path: unknown;
+	try {
+		summary = JSON.parse(m[1]);
+		path = JSON.parse(m[2]);
+	} catch {
+		return null;
+	}
+	if (typeof summary !== "string" || typeof path !== "string" || !summary.startsWith("Previous: ")) return null;
+	const basename = summary.slice("Previous: ".length);
+	const eol = m[0].includes("\r\n") ? "\r\n" : "\n";
+	if (m[0] !== legacyFoldoutBlock(basename, path).split("\n").join(eol)) return null;
+	const fresh = foldoutBlock(basename, path).split("\n").join(eol);
+	return content.slice(0, m.index) + fresh + content.slice(m.index + m[0].length);
 }
 
 // dataviewjs block: renders the shared Global Notes file inside a titled box.
