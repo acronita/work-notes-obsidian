@@ -4,6 +4,23 @@ Living log of significant changes to the project. This is **not** optional bookk
 
 Format: `YYYY-MM-DD â€” short description. Why (if not obvious). Files touched.`
 
+## 2026-10-31 (0.1.1)
+
+- **2026-10-31 — Fix: "Previous:" foldout leaked code and rendered the old note as a code block.** Root
+  cause: the generated `dataviewjs` block contained a regex with three literal backticks
+  (`` /```dataviewjs…```/g ``) on one of its lines, which closed the markdown fence early. `foldoutBlock` now
+  builds the fence at runtime (`"`".repeat(3)`) and strips the previous note's `dataviewjs` blocks with a
+  line-anchored `RegExp`, so the generated block never holds three consecutive backticks; `extractToday` uses
+  the same line-anchored strip. Files: `src/main.ts`.
+- **2026-10-31 — Automatic migration of existing notes.** Notes created by 0.1.0 still carry the broken
+  foldout on disk. When a work note is opened (`file-open`, plus the already-active note at startup), the
+  plugin rewrites only that note's legacy foldout block to the current format via `vault.process`. Safe by
+  design: idempotent, only the opened note (no vault scan), only inside the configured folder with a
+  `Work note DD-MM-YYYY` name, only when the block matches the legacy one exactly (otherwise untouched), and
+  nothing outside the block changes (line endings preserved). Files: `src/main.ts`, `docs/ARCHITECTURE.md`,
+  `docs/FAQ.md`, `package.json`, `package-lock.json`, `manifest.json`. `versions.json` unchanged
+  (`minAppVersion` still 1.4.0).
+
 ## 2026-07-26 (0.1.0)
 
 - **Initial scaffold** from the Obsidian plugin bootstrap template. Files: all.
